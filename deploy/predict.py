@@ -6,7 +6,10 @@ import os
 os.environ.setdefault("OPENCV_LOG_LEVEL", "ERROR")
 import argparse
 import json
+import shutil
 import sys
+import tempfile
+import zipfile
 from pathlib import Path
 import cv2
 import numpy as np
@@ -34,14 +37,40 @@ def _pick_device(requested):
         return "mps"
     return "cpu"
 
-def _gather_inputs(input_path):
+def _is_tif(p):
+    # excludes sidecars like ".tif.aux.xml" because suffix is ".xml"
+    return p.is_file() and p.suffix.lower() in _IMG_EXTS
+
+def _extract_zip(zip_path, dest):
+    with zipfile.ZipFile(zip_path) as zf:
+        for member in zf.infolist():
+            if member.is_dir():
+                continue
+            name = Path(member.filename).name
+            if not name or name.startswith("."):
+                continue
+            if not name.lower().endswith((".tif", ".tiff")):
+                continue
+            target = dest / name
+            with zf.open(member) as src, open(target, "wb") as dst:
+                shutil.copyfileobj(src, dst)
+
+def _gather_inputs(input_path, workdir):
+    """Return a list of .tif paths. Expands zips into workdir."""
     if input_path.is_file():
+        if input_path.suffix.lower() == ".zip":
+            _extract_zip(input_path, workdir)
+            return sorted(p for p in workdir.iterdir() if _is_tif(p))
         return [input_path]
     if input_path.is_dir():
-        return sorted(
-            p for p in input_path.iterdir()
-            if p.is_file() and p.suffix.lower() in _IMG_EXTS
-        )
+        tifs = [p for p in input_path.iterdir() if _is_tif(p)]
+        zips = [p for p in input_path.iterdir() if p.is_file() and p.suffix.lower() == ".zip"]
+        for z in zips:
+            sub = workdir / z.stem
+            sub.mkdir(parents=True, exist_ok=True)
+            _extract_zip(z, sub)
+            tifs.extend(p for p in sub.iterdir() if _is_tif(p))
+        return sorted(tifs)
     raise FileNotFoundError(f"Input not found: {input_path}")
 
 def parse_args():
@@ -92,14 +121,17 @@ def main():
         print("       Place your trained .pt file there or pass --checkpoint.", file=sys.stderr)
         return 1
 
+    tmp_workdir = Path(tempfile.mkdtemp(prefix="boem_zip_"))
     try:
-        inputs = _gather_inputs(args.input)
+        inputs = _gather_inputs(args.input, tmp_workdir)
     except FileNotFoundError as e:
         print(f"ERROR: {e}", file=sys.stderr)
+        shutil.rmtree(tmp_workdir, ignore_errors=True)
         return 1
     if not inputs:
         print(f"ERROR: no images found in {args.input}", file=sys.stderr)
-        print("       Drop a .tif/.tiff mosaic into ./input/ and re-run.", file=sys.stderr)
+        print("       Drop a .tif/.tiff mosaic or .zip into ./input/ and re-run.", file=sys.stderr)
+        shutil.rmtree(tmp_workdir, ignore_errors=True)
         return 1
 
     device = _pick_device(args.device)
@@ -223,6 +255,7 @@ def main():
     print(f"\nDone. {len(inputs)} mosaic(s) processed.")
     print(f"Outputs : {args.out.resolve()}")
     print(f"Summary : {summary_path}")
+    shutil.rmtree(tmp_workdir, ignore_errors=True)
     return 0
 
 if __name__ == "__main__":
