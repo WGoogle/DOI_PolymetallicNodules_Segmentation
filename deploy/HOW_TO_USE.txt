@@ -33,7 +33,7 @@ WHAT'S IN THIS FOLDER
     |-- predictions/             All outputs land here
 
 --------------------------------------------------------------------------------
-STEP 0 — GET THE MODEL WEIGHTS
+STEP 0 — GET THE MODEL WEIGHTS (VERY IMPORTANT)
 --------------------------------------------------------------------------------
 
 The trained weights file (checkpoint_best.pt, ~280 MB) is too large for GitHub
@@ -41,7 +41,7 @@ and is NOT included in this repo. If you did not train the model yourself,
 download it from whoever actually trained the model.
 
     Then place the file here:
-        deploy/checkpoints/checkpoint_best.pt
+        deploy/checkpoints/
 
 (If you trained the model yourself, it should automatically alread be there)
 
