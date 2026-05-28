@@ -187,7 +187,7 @@ Pixel size is read from GeoTIFF tags so density output is in real units (nodules
 ### Step 3 — run the predictor
 
 ```bash
-python deploy/predict.py
+python deploy/predict.py --threshold .01
 ```
 
 ### Outputs (written to `deploy/predictions/`)
