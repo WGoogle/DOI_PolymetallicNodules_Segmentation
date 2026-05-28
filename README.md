@@ -46,8 +46,8 @@ These guides are the canonical reference. The sections below summarize them, but
 ## Setup (lead or anyone running the full pipeline)
 
 ```bash
-git clone https://github.com/WGoogle/BOEM_CV_V2.git
-cd BOEM_CV_V2
+git clone https://github.com/WGoogle/DOI_PolymetallicNodules_Segmentation.git
+cd DOI_PolymetallicNodules_Segmentation
 pip install -r requirements.txt
 ```
 
